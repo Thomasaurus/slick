@@ -721,8 +721,8 @@
             targetSlide;
 
         _.slideOffset = 0;
-        verticalHeight = _.$slides.first().outerHeight();
-
+        verticalHeight = _.$slides.first().outerHeight(true);
+        
         if (_.options.infinite === true) {
             if (_.slideCount > _.options.slidesToShow) {
                 _.slideOffset = (_.slideWidth * _.options.slidesToShow) * -1;
@@ -1547,33 +1547,45 @@
         xDist = _.touchObject.startX - _.touchObject.curX;
         yDist = _.touchObject.startY - _.touchObject.curY;
         r = Math.atan2(yDist, xDist);
-
+            
         swipeAngle = Math.round(r * 180 / Math.PI);
         if (swipeAngle < 0) {
             swipeAngle = 360 - Math.abs(swipeAngle);
         }
+        if (!_.options.vertical) {
+            if ((swipeAngle <= 45) && (swipeAngle >= 0)) {
+                return 'left';
+            }
+            if ((swipeAngle <= 360) && (swipeAngle >= 315)) {
+                return 'left';
+            }
+            if ((swipeAngle >= 135) && (swipeAngle <= 225)) {
+                return 'right';
+            }
 
-        if ((swipeAngle <= 45) && (swipeAngle >= 0)) {
-            return 'left';
+            return 'invalidDirection';
         }
-        if ((swipeAngle <= 360) && (swipeAngle >= 315)) {
-            return 'left';
+        else {
+            if ((swipeAngle <= 135) && (swipeAngle >= 45)) {
+                return 'up';
+            }
+            if ((swipeAngle <= 315) && (swipeAngle >= 225)) {
+                return 'down';
+            }
+            return 'invalidDirection';
         }
-        if ((swipeAngle >= 135) && (swipeAngle <= 225)) {
-            return 'right';
-        }
-
-        return 'vertical';
 
     };
 
     Slick.prototype.swipeEnd = function(event) {
+        
 
         var _ = this, slideCount, slidesTraversed, swipeDiff;
 
         _.dragging = false;
 
         if (_.touchObject.curX === undefined) {
+            console.log('Test1');
             return false;
         }
 
@@ -1583,22 +1595,25 @@
                 event.stopPropagation();
                 event.preventDefault();
                 $(event.target).off('click.slick');
+                
             });
 
             if(_.options.swipeToSlide === true) {
                 slidesTraversed = Math.round(_.touchObject.swipeLength / _.slideWidth);
-                slideCount = slidesTraversed
+                slideCount = slidesTraversed;
             } else {
                 slideCount = _.options.slidesToScroll;
             }
 
             switch (_.swipeDirection()) {
                 case 'left':
+                case 'up':
                     _.slideHandler(_.currentSlide + slideCount);
                     _.touchObject = {};
                     break;
 
                 case 'right':
+                case 'down':
                     _.slideHandler(_.currentSlide - slideCount);
                     _.touchObject = {};
                     break;
@@ -1661,27 +1676,25 @@
 
         _.touchObject.curX = touches !== undefined ? touches[0].pageX : event.clientX;
         _.touchObject.curY = touches !== undefined ? touches[0].pageY : event.clientY;
-
-        _.touchObject.swipeLength = Math.round(Math.sqrt(
-            Math.pow(_.touchObject.curX - _.touchObject.startX, 2)));
-
+        
         swipeDirection = _.swipeDirection();
 
-        if (swipeDirection === 'vertical') {
+        if (swipeDirection === 'invalidDirection') {
             return;
         }
+        
+        if (_.options.vertical) {
+            _.touchObject.swipeLength = Math.round(Math.sqrt(Math.pow(_.touchObject.curY - _.touchObject.startY, 2)));
+            positionOffset = _.touchObject.curY > _.touchObject.startY ? 1 : -1;
+        }
+        else {
+            _.touchObject.swipeLength = Math.round(Math.sqrt(Math.pow(_.touchObject.curX - _.touchObject.startX, 2)));
+            positionOffset = _.touchObject.curX > _.touchObject.startX ? 1 : -1;
+        }
+        _.swipeLeft = curLeft + _.touchObject.swipeLength * positionOffset;
 
         if (event.originalEvent !== undefined && _.touchObject.swipeLength > 4) {
             event.preventDefault();
-        }
-
-        positionOffset = _.touchObject.curX > _.touchObject.startX ? 1 : -1;
-
-        if (_.options.vertical === false) {
-            _.swipeLeft = curLeft + _.touchObject.swipeLength * positionOffset;
-        } else {
-            _.swipeLeft = curLeft + (_.touchObject
-                .swipeLength * (_.$list.height() / _.listWidth)) * positionOffset;
         }
 
         if (_.options.fade === true || _.options.touchMove === false) {
